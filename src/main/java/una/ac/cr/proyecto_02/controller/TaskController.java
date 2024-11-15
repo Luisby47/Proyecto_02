@@ -2,15 +2,14 @@ package una.ac.cr.proyecto_02.controller;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import una.ac.cr.proyecto_02.entity.DailySchedule;
+import una.ac.cr.proyecto_02.entity.TaskDependency;
 import una.ac.cr.proyecto_02.entity.TaskEntity;
-import una.ac.cr.proyecto_02.repository.DailyScheduleRepository;
+import una.ac.cr.proyecto_02.entity.WeatherCondition;
 import una.ac.cr.proyecto_02.service.Service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -23,65 +22,75 @@ public class TaskController {
 
 
 
-    @Autowired
-    private DailyScheduleRepository dailyScheduleRepository;
-
-    // Endpoint para obtener todas las tareas
+    // ---------------------------  Tareas --------------------------------//
     @GetMapping
-    public List<TaskEntity> getAllTasks() {
-        return service.getAllTasks();
+    public ResponseEntity<List<TaskEntity>> getAllTasks() {
+        List<TaskEntity> tasks = service.getAllTasks();
+        return ResponseEntity.ok(tasks);
     }
 
-    // Endpoint para crear una nueva tarea
+
+    @GetMapping("/{taskId}")
+    public ResponseEntity<TaskEntity> getTaskById(@PathVariable Long taskId) {
+        TaskEntity task = service.getTaskById(taskId);
+        return ResponseEntity.ok(task);
+    }
+
+
     @PostMapping
-    public TaskEntity createTask(@RequestBody TaskEntity task) {
-        return service.createTask(task);
+    public ResponseEntity<TaskEntity> createTask(@RequestBody TaskEntity task) {
+        TaskEntity newTask = service.createTask(task);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newTask);
     }
 
-    // Endpoint para actualizar una tarea existente
+
     @PutMapping("/{taskId}")
-    public TaskEntity updateTask(@PathVariable Long taskId, @RequestBody TaskEntity task) {
-        return service.updateTask(taskId, task);
+    public ResponseEntity<TaskEntity> updateTask(@PathVariable Long taskId, @RequestBody TaskEntity task) {
+        TaskEntity updatedTask = service.updateTask(taskId, task);
+        return ResponseEntity.ok(updatedTask);
     }
 
-    // Endpoint para eliminar una tarea
+
     @DeleteMapping("/{taskId}")
     public void deleteTask(@PathVariable Long taskId) {
         service.deleteTask(taskId);
     }
 
-    // Endpoint para obtener el plan optimizado de tareas
+
+
+
+    // ---------------------------  Condiciones del clima --------------------------------//
+    @GetMapping("/weather")
+    public ResponseEntity<List<WeatherCondition>> getAllWeatherConditions() {
+        List<WeatherCondition> weatherConditions = service.getAllWeatherConditions();
+        return ResponseEntity.ok(weatherConditions);
+    }
+
+
+    // ---------------------------  Dependencias de tareas --------------------------------//
+    @GetMapping("/{taskId}/dependencies")
+    public List<TaskDependency> getTaskDependencies(@PathVariable Long taskId) {
+        return service.getDependencies(taskId);
+    }
+
+
+    // ---------------------------  Optimizar tareas --------------------------------//
     @GetMapping("/optimize")
-    public List<TaskEntity> getOptimizedSchedule() {
-        return service.getOptimizedSchedule();
-    }
-
-
-    // Metodo para obtener el plan optimizado y guardarlo en DailySchedule
-    public List<DailySchedule> saveDailySchedule(List<TaskEntity> optimizedTasks) {
-        LocalDate today = LocalDate.now();
-        LocalDateTime startTime = LocalDateTime.now(); // Tiempo de inicio de la primera tarea
-
-        List<DailySchedule> scheduleEntries = new ArrayList<>();
-
-        for (TaskEntity task : optimizedTasks) {
-            DailySchedule schedule = new DailySchedule();
-            schedule.setDate(today);
-            schedule.setTask(task);
-            schedule.setStartTime(startTime);
-
-            // Calcula el tiempo de finalización de la tarea
-            LocalDateTime endTime = startTime.plusMinutes(task.getEstimatedTime());
-            schedule.setEndTime(endTime);
-
-            // Guarda el registro en la base de datos
-            dailyScheduleRepository.save(schedule);
-            scheduleEntries.add(schedule);
-
-            // Actualiza el tiempo de inicio para la siguiente tarea
-            startTime = endTime;
+    public ResponseEntity<List<TaskEntity>> getOptimizedSchedule(
+            @RequestParam(name = "availableTime", defaultValue = "480") int availableTime) {
+        try {
+            List<TaskEntity> optimizedTasks = service.getOptimizedSchedule(availableTime);
+            return ResponseEntity.ok(optimizedTasks);
+        } catch (RuntimeException e) {
+            // Manejar el error si no se pueden completar todas las tareas en el tiempo disponible
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(null);
         }
-
-        return scheduleEntries;
     }
+
+
+
+
+
+
 }

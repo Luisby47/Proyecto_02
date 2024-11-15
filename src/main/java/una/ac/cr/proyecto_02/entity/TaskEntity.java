@@ -14,12 +14,10 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-
 @Table(name = "tasks")
 
 public class TaskEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long taskId;
 
     @Column(nullable = false, length = 255)
@@ -45,6 +43,9 @@ public class TaskEntity {
             inverseJoinColumns = @JoinColumn(name = "dependency_id")
     )
     private List<TaskEntity> dependencies;
+
+
+
 
 
 }

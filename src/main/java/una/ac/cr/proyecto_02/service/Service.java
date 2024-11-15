@@ -2,11 +2,11 @@ package una.ac.cr.proyecto_02.service;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
-import una.ac.cr.proyecto_02.entity.DailySchedule;
 import una.ac.cr.proyecto_02.entity.Priority;
+import una.ac.cr.proyecto_02.entity.TaskDependency;
 import una.ac.cr.proyecto_02.entity.TaskEntity;
 import una.ac.cr.proyecto_02.entity.WeatherCondition;
-import una.ac.cr.proyecto_02.repository.DailyScheduleRepository;
+import una.ac.cr.proyecto_02.repository.TaskDependencyRepository;
 import una.ac.cr.proyecto_02.repository.TaskRepository;
 
 import org.jpl7.Query;
@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @org.springframework.stereotype.Service
 public class Service {
@@ -30,7 +31,8 @@ public class Service {
     private WeatherConditionRepository weatherConditionRepository;
 
     @Autowired
-    private DailyScheduleRepository dailyScheduleRepository;
+    private TaskDependencyRepository taskDependencyRepository;
+
 
 
     // Obtener todas las tareas
@@ -38,10 +40,14 @@ public class Service {
         return taskRepository.findAll();
     }
 
-    // Crear una tarea
-    public TaskEntity createTask(TaskEntity task) {
-        return taskRepository.save(task);
+    // Obtener una tarea por ID
+    public TaskEntity getTaskById(Long taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
     }
+
+    // Crear una tarea
+
 
     // Actualizar una tarea
     public TaskEntity updateTask(Long taskId, TaskEntity task) {
@@ -52,6 +58,8 @@ public class Service {
         existingTask.setEstimatedTime(task.getEstimatedTime());
         existingTask.setDeadline(task.getDeadline());
         existingTask.setWeatherRequirement(task.getWeatherRequirement());
+        existingTask.setDependencies(task.getDependencies());
+
         return taskRepository.save(existingTask);
     }
 
@@ -60,28 +68,53 @@ public class Service {
         taskRepository.deleteById(taskId);
     }
 
-    // Optimizar el plan de tareas utilizando Prolog
-    public List<TaskEntity> getOptimizedSchedule() {
+
+    // Obtener los WeatherConditions
+    public List<WeatherCondition> getAllWeatherConditions() {
+        return weatherConditionRepository.findAll();
+    }
+
+    public TaskEntity createTask(TaskEntity task) {
+        return taskRepository.save(task);
+    }
+
+    public List<TaskDependency> getDependencies(Long taskId) {
+        return taskDependencyRepository.findByTask_TaskId(taskId);
+    }
+
+
+
+
+
+
+
+    public List<TaskEntity> getOptimizedSchedule(int availableTime) {
         List<TaskEntity> tasks = taskRepository.findAll();
 
-        // Cargar el archivo de reglas de Prolog (asume que tienes un archivo .pl con la lógica)
-        Query loadQuery = new Query("consult", new Term[]{new org.jpl7.Atom("path/to/rules.pl")});
-        if (!loadQuery.hasSolution()) {
+        // Cargar archivo de reglas
+        if (!new Query("consult('rules.pl')").hasSolution()) {
             throw new RuntimeException("Failed to load Prolog rules.");
         }
 
-        // Crear las consultas y las variables necesarias
-        Variable optimizedTasksVar = new Variable("OptimizedTasks");
-
-        // Generar las restricciones y la lista de tareas en formato Prolog
+        // Crear lista de tareas en formato Prolog
         String tasksPrologList = tasksToPrologList(tasks);
-        String queryStr = "optimize_schedule(" + tasksPrologList + ", " + optimizedTasksVar + ")";
 
-        // Ejecutar la consulta Prolog
+        // Primera consulta: verificar si todas las tareas pueden completarse en el tiempo disponible
+        String timeQueryStr = "check_time_restrictions(" + availableTime + ")";
+        Query timeQuery = new Query(timeQueryStr);
+        if (!timeQuery.hasSolution()) {
+            throw new RuntimeException("No es posible completar todas las tareas en el tiempo disponible.");
+        }
+
+        // Segunda consulta: optimizar el orden de tareas
+        Variable optimizedTasksVar = new Variable("OptimizedTasks");
+        String queryStr = "optimize_schedule(" + tasksPrologList + ", " + optimizedTasksVar + ")";
         Query query = new Query(queryStr);
 
+        // Procesar el resultado de la consulta
         return parsePrologResponse(query.oneSolution().get(optimizedTasksVar.name()));
     }
+
 
     // Convierte la lista de tareas en un formato compatible con Prolog
     private String tasksToPrologList(List<TaskEntity> tasks) {
@@ -147,7 +180,5 @@ public class Service {
         return optimizedTasks;
     }
 
-    public List<DailySchedule> getDailyScheduleForDate(LocalDate date) {
-        return dailyScheduleRepository.findByDate(date);
-    }
+
 }
