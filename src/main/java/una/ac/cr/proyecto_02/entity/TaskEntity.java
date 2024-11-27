@@ -18,6 +18,7 @@ import java.util.List;
 
 public class TaskEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long taskId;
 
     @Column(nullable = false, length = 255)

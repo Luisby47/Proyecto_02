@@ -2,7 +2,7 @@
 CREATE TABLE weather_condition (
     condition_id 	INT AUTO_INCREMENT PRIMARY KEY,
     date_time 		TIMESTAMP NOT NULL,
-    condition 		VARCHAR(50),  -- Ej: "soleado", "lluvioso", "nublado"
+    `condition` 	VARCHAR(50),  -- Ej: "soleado", "lluvioso", "nublado"
     temperature 	INT  -- Temperatura en grados (opcional)
 );
 
@@ -10,7 +10,7 @@ CREATE TABLE weather_condition (
 CREATE TABLE tasks (
     task_id 			INT AUTO_INCREMENT PRIMARY KEY,
     name 				VARCHAR(255) NOT NULL,
-    priority 			ENUM('ALTA', 'MEDIA', 'BAJA'),
+    priority 			ENUM('HIGH', 'MEDIUM', 'LOW'),
     estimated_time 		INT NOT NULL,  -- en minutos
     deadline 			TIMESTAMP,
     weather_requirement INT,  -- Referencia a `condition_id`

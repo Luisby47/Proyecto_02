@@ -133,6 +133,7 @@ async function createOrUpdateTask() {
 
         // Refrescar lista de tareas
         await getAllTasks();
+        await loadTasksForDependencies();
         resetForm();
     } catch (error) {
         console.error('Error al crear/actualizar tarea:', error);
@@ -180,6 +181,7 @@ async function deleteTask(taskId) {
         if(!response.ok){ console.log(response.status); return; }
 
         await getAllTasks();
+        await loadTasksForDependencies();
     } catch (error) {
         console.error('Error al eliminar tarea:', error);
     }
